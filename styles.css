@@ -1,0 +1,24 @@
+.move > div {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0.5em;
+}
+
+.board span {
+  width: 3em;
+  height: 3em;
+  border: 1px solid black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.board.winner {
+  background-color: lightgreen;
+}

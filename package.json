@@ -1,0 +1,12 @@
+{
+  "name": "tictactoe-cards",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tic-tac-toe-card-generator.js",
+  "scripts": {
+    "build": "node tic-tac-toe-card-generator.js > index.html"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
