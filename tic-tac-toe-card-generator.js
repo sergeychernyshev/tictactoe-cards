@@ -33,35 +33,28 @@ let prevBoards = [
 const boards = [[], [], [], [], [], [], [], [], []];
 
 function addBoard(boards, board) {
-  // rotate
-  let rotatedBoard1 = rotateBoard(board);
-  let rotatedBoard2 = rotateBoard(rotatedBoard1);
-  let rotatedBoard3 = rotateBoard(rotatedBoard2);
+  // board permutations
+  const perms = [board];
 
-  // flip diagonally
-  let flippedBoardDiagonal1 = flipBoardDiagonal1(board);
-  let flippedBoardDiagonal2 = flipBoardDiagonal2(board);
+  // rotate original board 3 times
+  perms.push(rotateBoard(perms[perms.length - 1]));
+  perms.push(rotateBoard(perms[perms.length - 1]));
+  perms.push(rotateBoard(perms[perms.length - 1]));
 
-  // flip
-  let flippedBoardHorizontal = flipBoardHorizontal(board);
-  let flippedBoardVertical = flipBoardVertical(board);
-  let flippedBoardBoth = flipBoardHorizontal(flippedBoardVertical);
+  // flip original board and add 3 rotations of it
+  perms.push(flipBoard(board));
+  perms.push(rotateBoard(perms[perms.length - 1]));
+  perms.push(rotateBoard(perms[perms.length - 1]));
+  perms.push(rotateBoard(perms[perms.length - 1]));
 
+  // compare each permutaion with original boards
   let boardIsNew = true;
   boards.forEach((prevBoard) => {
-    if (
-      compareBoards(prevBoard, board) ||
-      compareBoards(prevBoard, rotatedBoard1) ||
-      compareBoards(prevBoard, rotatedBoard2) ||
-      compareBoards(prevBoard, rotatedBoard3) ||
-      compareBoards(prevBoard, flippedBoardDiagonal1) ||
-      compareBoards(prevBoard, flippedBoardDiagonal2) ||
-      compareBoards(prevBoard, flippedBoardHorizontal) ||
-      compareBoards(prevBoard, flippedBoardVertical) ||
-      compareBoards(prevBoard, flippedBoardBoth)
-    ) {
-      boardIsNew = false;
-    }
+    perms.forEach((perm) => {
+      if (compareBoards(prevBoard, perm)) {
+        boardIsNew = false;
+      }
+    });
   });
 
   if (boardIsNew) {
@@ -71,6 +64,7 @@ function addBoard(boards, board) {
   return boardIsNew;
 }
 
+// rotate board 90 degrees clockwise
 function rotateBoard(board) {
   return [
     [board[2][0], board[1][0], board[0][0]],
@@ -79,35 +73,12 @@ function rotateBoard(board) {
   ];
 }
 
-function flipBoardDiagonal1(board) {
-  return [
-    [board[0][0], board[1][0], board[2][0]],
-    [board[0][1], board[1][1], board[2][1]],
-    [board[0][2], board[1][2], board[2][2]],
-  ];
-}
-
-function flipBoardDiagonal2(board) {
-  return [
-    [board[2][2], board[1][2], board[0][2]],
-    [board[2][1], board[1][1], board[0][1]],
-    [board[2][0], board[1][0], board[0][0]],
-  ];
-}
-
-function flipBoardHorizontal(board) {
+// flip board horizontally
+function flipBoard(board) {
   return [
     [board[0][2], board[0][1], board[0][0]],
     [board[1][2], board[1][1], board[1][0]],
     [board[2][2], board[2][1], board[2][0]],
-  ];
-}
-
-function flipBoardVertical(board) {
-  return [
-    [board[2][0], board[2][1], board[2][2]],
-    [board[1][0], board[1][1], board[1][2]],
-    [board[0][0], board[0][1], board[0][2]],
   ];
 }
 
