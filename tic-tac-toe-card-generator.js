@@ -33,28 +33,12 @@ let prevBoards = [
 const boards = [[], [], [], [], [], [], [], [], []];
 
 function addBoard(boards, board) {
-  // board permutations
-  const perms = [board];
-
-  // rotate original board 3 times
-  perms.push(rotateBoard(perms[perms.length - 1]));
-  perms.push(rotateBoard(perms[perms.length - 1]));
-  perms.push(rotateBoard(perms[perms.length - 1]));
-
-  // flip original board and add 3 rotations of it
-  perms.push(flipBoard(board));
-  perms.push(rotateBoard(perms[perms.length - 1]));
-  perms.push(rotateBoard(perms[perms.length - 1]));
-  perms.push(rotateBoard(perms[perms.length - 1]));
-
   // compare each permutaion with original boards
   let boardIsNew = true;
-  boards.forEach((prevBoard) => {
-    perms.forEach((perm) => {
-      if (compareBoards(prevBoard, perm)) {
-        boardIsNew = false;
-      }
-    });
+  boards.forEach((existingBoard) => {
+    if (matchWithPermutations(existingBoard, board)) {
+      boardIsNew = false;
+    }
   });
 
   if (boardIsNew) {
@@ -82,7 +66,7 @@ function flipBoard(board) {
   ];
 }
 
-function compareBoards(board1, board2) {
+function areIdentical(board1, board2) {
   for (let row = 0; row < 3; row++) {
     for (let column = 0; column < 3; column++) {
       if (board1[row][column] !== board2[row][column]) {
@@ -92,6 +76,39 @@ function compareBoards(board1, board2) {
   }
 
   return true;
+}
+
+/**
+ * Returns true if boards are identical or one is a rotation or flip of the other
+ *
+ * @param {GameBoard} board1
+ * @param {GameBoard} board2
+ * @returns boolean
+ */
+function matchWithPermutations(board1, board2) {
+  // board permutations
+  const perms = [board1];
+
+  // rotate original board 3 times
+  perms.push(rotateBoard(perms[perms.length - 1]));
+  perms.push(rotateBoard(perms[perms.length - 1]));
+  perms.push(rotateBoard(perms[perms.length - 1]));
+
+  // flip original board and add 3 rotations of it
+  perms.push(flipBoard(board1));
+  perms.push(rotateBoard(perms[perms.length - 1]));
+  perms.push(rotateBoard(perms[perms.length - 1]));
+  perms.push(rotateBoard(perms[perms.length - 1]));
+
+  // compare each permutaion of board1 with board2
+  let identical = false;
+  perms.forEach((perm) => {
+    if (areIdentical(board2, perm)) {
+      identical = true;
+    }
+  });
+
+  return identical;
 }
 
 function printBoard(board) {
@@ -173,6 +190,7 @@ for (let move = 0; move < 9; move++) {
 }
 
 console.log(`
+  <h2>Summary</h2>
   <p>Boards for X ${
     boards.filter((x, i) => i % 2 === 0).flat().length
   } unique boards</p>
