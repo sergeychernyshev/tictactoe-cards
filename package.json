@@ -2,11 +2,17 @@
   "name": "tictactoe-cards",
   "version": "1.0.0",
   "description": "",
-  "main": "tic-tac-toe-card-generator.js",
+  "main": "src/index.ts",
   "scripts": {
-    "build": "node tic-tac-toe-card-generator.js > index.html"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "~5.7.2",
+    "vite": "^6.2.1"
+  }
 }
