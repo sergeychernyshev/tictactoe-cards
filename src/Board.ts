@@ -58,6 +58,9 @@ export default class Board {
     const nextGrid = this.grid.map((row) => row.slice());
     nextGrid[move.row][move.col] = move.mark;
 
+    // TODO fix a bug with move not matching the next board as the existing board got rotated
+    // it shows the wrong move on the display board right now
+
     return Board.get(nextGrid);
   }
 
