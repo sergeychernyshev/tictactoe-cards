@@ -2,39 +2,63 @@ import type { Mark, MarkOrEmpty } from "./Mark";
 import { X, O } from "./Mark";
 import Move from "./Move";
 
+import type { Grid } from "./Grid";
+import { getGridId, rotatedGrid, flippedGrid, gridsAreIdentical } from "./Grid";
+
 const O_TURN_BACKGROUND = "yellow";
 const X_TURN_BACKGROUND = "white";
 const WINNING_BACKGROUND = "lightgreen";
 
-export default class Board {
-  grid: MarkOrEmpty[][];
-  moves: Move[] = [];
+// private key to use in the constructor
+const PRIVATE_KEY = Symbol();
 
-  constructor(board?: MarkOrEmpty[][]) {
-    if (typeof board === "undefined") {
-      this.grid = [
-        [null, null, null],
-        [null, null, null],
-        [null, null, null],
-      ];
-    } else {
-      this.grid = board;
+let index = 0;
+
+const boards: Board[] = [];
+
+export default class Board {
+  grid: Grid;
+  moves: Move[] = [];
+  index: number;
+
+  constructor(key: symbol, grid) {
+    if (key !== PRIVATE_KEY) {
+      throw new Error(
+        "Use Board.get() to create a new board, or start with Board.getEmptyBoard()"
+      );
     }
+
+    this.index = index++;
+    this.grid = grid;
   }
 
-  clone(): Board {
-    const board = new Board();
-    board.grid = this.grid.map((row) => row.slice());
+  static getEmptyBoard() {
+    return Board.get([
+      [null, null, null],
+      [null, null, null],
+      [null, null, null],
+    ]);
+  }
+
+  // singleton to manage identical boards
+  static get(grid: Grid): Board {
+    let board: Board | undefined = boards.find((b) => b.compareGrid(grid));
+
+    if (typeof board === "undefined") {
+      board = new Board(PRIVATE_KEY, grid);
+      boards.push(board);
+    }
+
     return board;
   }
 
   move(move: Move): Board {
     this.moves.push(move);
 
-    const next = this.clone();
-    next.grid[move.row][move.col] = move.mark;
+    const nextGrid = this.grid.map((row) => row.slice());
+    nextGrid[move.row][move.col] = move.mark;
 
-    return next;
+    return Board.get(nextGrid);
   }
 
   fillPossibleMoves(mark: Mark) {
@@ -57,54 +81,33 @@ export default class Board {
     });
   }
 
-  identical(board: Board): boolean {
-    return this.grid.every((row, i) =>
-      row.every((mark, j) => mark === board.grid[i][j])
-    );
-  }
-
-  // rotate board 90 degrees clockwise
-  rotate() {
-    return new Board([
-      [this.grid[2][0], this.grid[1][0], this.grid[0][0]],
-      [this.grid[2][1], this.grid[1][1], this.grid[0][1]],
-      [this.grid[2][2], this.grid[1][2], this.grid[0][2]],
-    ]);
-  }
-
-  // flip board horizontally
-  flip() {
-    return new Board([
-      [this.grid[0][2], this.grid[0][1], this.grid[0][0]],
-      [this.grid[1][2], this.grid[1][1], this.grid[1][0]],
-      [this.grid[2][2], this.grid[2][1], this.grid[2][0]],
-    ]);
-  }
-
-  compare(board): boolean {
+  compareGrid(grid: Grid): boolean {
     // board permutations
-    const perms: Board[] = [this];
+    const perms: Grid[] = [this.grid];
 
     // rotate original board 3 times
-    perms.push(perms[perms.length - 1].rotate());
-    perms.push(perms[perms.length - 1].rotate());
-    perms.push(perms[perms.length - 1].rotate());
+    perms.push(rotatedGrid(perms[perms.length - 1]));
+    perms.push(rotatedGrid(perms[perms.length - 1]));
+    perms.push(rotatedGrid(perms[perms.length - 1]));
 
     // flip original board and add 3 rotations of it
-    perms.push(this.flip());
-    perms.push(perms[perms.length - 1].rotate());
-    perms.push(perms[perms.length - 1].rotate());
-    perms.push(perms[perms.length - 1].rotate());
+    perms.push(flippedGrid(this.grid));
+    perms.push(rotatedGrid(perms[perms.length - 1]));
+    perms.push(rotatedGrid(perms[perms.length - 1]));
+    perms.push(rotatedGrid(perms[perms.length - 1]));
 
     // compare each permutaion of board1 with board2
-    let identical = false;
-    perms.forEach((perm) => {
-      if (board.identical(perm)) {
-        identical = true;
-      }
-    });
+    let identical = perms.some((perm) => gridsAreIdentical(grid, perm));
 
     return identical;
+  }
+
+  compare(board: Board): boolean {
+    return this.compareGrid(board.grid);
+  }
+
+  isFull(): boolean {
+    return this.grid.every((row) => row.every((cell) => cell !== null));
   }
 
   isWinner(): boolean {
@@ -127,20 +130,18 @@ export default class Board {
     );
   }
 
-  html(): string {
-    const winnerClass = this.isWinner() ? "winner" : "";
-    return `<div class="board ${winnerClass}">
-      <span>${this.grid[0][0] || ""}</span>
-      <span>${this.grid[0][1] || ""}</span>
-      <span>${this.grid[0][2] || ""}</span>
+  html(currentMove?: Move): string {
+    const idAttribute = currentMove ? "" : `id="board${this.index}"`;
+    const boardTitle =
+      currentMove && !this.isWinner() && !this.isFull()
+        ? `<a href="#board${this.index}">Board ${this.index}</a>`
+        : `Board ${this.index}`;
 
-      <span>${this.grid[1][0] || ""}</span>
-      <span>${this.grid[1][1] || ""}</span>
-      <span>${this.grid[1][2] || ""}</span>
-
-      <span>${this.grid[2][0] || ""}</span>
-      <span>${this.grid[2][1] || ""}</span>
-      <span>${this.grid[2][2] || ""}</span>
+    return `<div class="board" ${idAttribute}>
+    <p>${boardTitle}</p>
+    <div>
+      ${this.svg(currentMove)}
+    </div>
     </div>`;
   }
 

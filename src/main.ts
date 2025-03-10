@@ -6,7 +6,7 @@ import type { Mark } from "./Mark";
 
 import { RIGHT_ARROW } from "./SVGHelper";
 
-const start = new Board();
+const start = Board.getEmptyBoard();
 
 let mark: Mark = X;
 start.fillPossibleMoves(mark);
@@ -20,19 +20,17 @@ function turnHTML(boards: Board[]): string {
 
   let html = "";
 
-  if (mark === X) {
-    html += `<h2 id="turn${turn}">Turn ${turn}</h2>`;
+  html += `<h2 id="turn${turn}">Turn ${turn}</h2>`;
 
-    html += boards.map(
+  html += boards
+    .map(
       (board) => `<div class="move">
-      <div class="board">${board.svg()}</div>
+      ${board.html()}
       <div class="arrow">${RIGHT_ARROW}</div>
-      ${board.moves
-        .map((move) => `<div class="board">${move.svg()}</div>`)
-        .join("\n")}
+      ${board.moves.map((move) => move.html()).join("\n")}
     </div>`
-    );
-  }
+    )
+    .join("\n");
 
   turn++;
 

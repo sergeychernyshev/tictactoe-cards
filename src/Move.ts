@@ -22,4 +22,8 @@ export default class Move {
   svg(): string {
     return this.next.svg(this);
   }
+
+  html(): string {
+    return this.next.html(this);
+  }
 }
