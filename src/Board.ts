@@ -3,7 +3,8 @@ import { X, O } from "./Mark";
 import Move from "./Move";
 
 import type { Grid } from "./Grid";
-import { getGridId, rotatedGrid, flippedGrid, gridsAreIdentical } from "./Grid";
+import { gridsAreIdentical } from "./Grid";
+import { Transform, AsIs, Rotate, Flip } from "./Permutation";
 
 const O_TURN_BACKGROUND = "yellow";
 const X_TURN_BACKGROUND = "white";
@@ -15,6 +16,21 @@ const PRIVATE_KEY = Symbol();
 let index = 0;
 
 const boards: Board[] = [];
+
+// board permutations
+const perms: Transform[] = [];
+
+// rotate original board 3 times
+perms.push(new AsIs());
+perms.push(new Rotate());
+perms.push(new Rotate(perms[perms.length - 1]));
+perms.push(new Rotate(perms[perms.length - 1]));
+
+// flip original board and add 3 rotations of it
+perms.push(new Flip());
+perms.push(new Rotate(perms[perms.length - 1]));
+perms.push(new Rotate(perms[perms.length - 1]));
+perms.push(new Rotate(perms[perms.length - 1]));
 
 export default class Board {
   grid: Grid;
@@ -40,9 +56,11 @@ export default class Board {
     ]);
   }
 
-  // singleton to manage identical boards
-  static get(grid: Grid): Board {
-    let board: Board | undefined = boards.find((b) => b.compareGrid(grid));
+  // singleton to manage identical boards, also updates the move if grid is permutated
+  static get(grid: Grid, move?: Move): Board {
+    let board: Board | undefined = boards.find((b) =>
+      b.compareGrid(grid, move)
+    );
 
     if (typeof board === "undefined") {
       board = new Board(PRIVATE_KEY, grid);
@@ -56,12 +74,15 @@ export default class Board {
     this.moves.push(move);
 
     const nextGrid = this.grid.map((row) => row.slice());
-    nextGrid[move.row][move.col] = move.mark;
+    move.apply(nextGrid);
 
     // TODO fix a bug with move not matching the next board as the existing board got rotated
     // it shows the wrong move on the display board right now
 
-    return Board.get(nextGrid);
+    // if grid was originally differet, rotate the move accordingly
+
+    const board = Board.get(nextGrid, move);
+    return board;
   }
 
   fillPossibleMoves(mark: Mark) {
@@ -82,25 +103,21 @@ export default class Board {
     this.moves = this.moves.filter((move, i, arr) => {
       return arr.findIndex((m) => m.next.compare(move.next)) === i;
     });
+
+    this.moves.forEach((move) => move.recordIndex());
   }
 
-  compareGrid(grid: Grid): boolean {
-    // board permutations
-    const perms: Grid[] = [this.grid];
-
-    // rotate original board 3 times
-    perms.push(rotatedGrid(perms[perms.length - 1]));
-    perms.push(rotatedGrid(perms[perms.length - 1]));
-    perms.push(rotatedGrid(perms[perms.length - 1]));
-
-    // flip original board and add 3 rotations of it
-    perms.push(flippedGrid(this.grid));
-    perms.push(rotatedGrid(perms[perms.length - 1]));
-    perms.push(rotatedGrid(perms[perms.length - 1]));
-    perms.push(rotatedGrid(perms[perms.length - 1]));
-
+  compareGrid(grid: Grid, move?: Move): boolean {
     // compare each permutaion of board1 with board2
-    let identical = perms.some((perm) => gridsAreIdentical(grid, perm));
+    let identical = perms.some((perm) => {
+      const transformedBoardGrid = perm.transformGrid(this.grid);
+      if (gridsAreIdentical(grid, transformedBoardGrid)) {
+        move?.transform(perm);
+        return true;
+      } else {
+        return false;
+      }
+    });
 
     return identical;
   }
@@ -133,19 +150,27 @@ export default class Board {
     );
   }
 
-  html(currentMove?: Move): string {
-    const idAttribute = currentMove ? "" : `id="board${this.index}"`;
-    const boardTitle =
-      currentMove && !this.isWinner() && !this.isFull()
-        ? `<a href="#board${this.index}">Board ${this.index}</a>`
-        : `Board ${this.index}`;
+  html(move?: Move): string {
+    const idAttribute = move ? "" : `id="board${this.index}"`;
 
-    return `<div class="board" ${idAttribute}>
-    <p>${boardTitle}</p>
-    <div>
-      ${this.svg(currentMove)}
-    </div>
-    </div>`;
+    let title = "";
+
+    if (move) {
+      title = `<span>Move ${move.index}</span> to`;
+    }
+
+    if (move && !this.isWinner() && !this.isFull()) {
+      title += `<span><a href="#board${this.index}">Board ${this.index}</a></span>`;
+    } else {
+      title += `<span>Board ${this.index}</span>`;
+    }
+
+    return `<section class="board" ${idAttribute}>
+      <header>${title}</header>
+      <div>
+        ${this.svg(move)}
+      </div>
+    </section>`;
   }
 
   svg(currentMove?: Move): string {
@@ -172,8 +197,8 @@ export default class Board {
 
               if (
                 currentMove &&
-                currentMove.row === i &&
-                currentMove.col === j
+                currentMove.prevRow === i &&
+                currentMove.prevCol === j
               ) {
                 color = "blue";
               }

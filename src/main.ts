@@ -6,9 +6,9 @@ import Turn from "./Turn";
 let turn: Turn | null = new Turn();
 let html = turn.html();
 
-while ((turn = turn.next())) {
-  html += turn.html();
-}
+// while ((turn = turn.next())) {
+//   html += turn.html();
+// }
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>
