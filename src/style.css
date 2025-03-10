@@ -1,0 +1,17 @@
+.move {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 5px;
+  gap: 1em;
+  flex-wrap: wrap;
+}
+
+.board {
+  width: 8em;
+}
+
+.arrow {
+  width: 2em;
+  height: 8em;
+  display: flex;
+}
