@@ -3,8 +3,7 @@ import { X, O } from "./Mark";
 import Move from "./Move";
 
 import type { Grid } from "./Grid";
-import { gridsAreIdentical } from "./Grid";
-import { Transform, AsIs, Rotate, Flip } from "./Permutation";
+import { Transform, TRANSFORMS } from "./Transform";
 
 const O_TURN_BACKGROUND = "yellow";
 const X_TURN_BACKGROUND = "white";
@@ -15,37 +14,36 @@ const PRIVATE_KEY = Symbol();
 
 let index = 0;
 
-const boards: Board[] = [];
-
-// board permutations
-const perms: Transform[] = [];
-
-// rotate original board 3 times
-perms.push(new AsIs());
-perms.push(new Rotate());
-perms.push(new Rotate(perms[perms.length - 1]));
-perms.push(new Rotate(perms[perms.length - 1]));
-
-// flip original board and add 3 rotations of it
-perms.push(new Flip());
-perms.push(new Rotate(perms[perms.length - 1]));
-perms.push(new Rotate(perms[perms.length - 1]));
-perms.push(new Rotate(perms[perms.length - 1]));
+const boards = new Map<string, Board>();
 
 export default class Board {
   grid: Grid;
   moves: Move[] = [];
   index: number;
 
-  constructor(key: symbol, grid) {
+  base: Board;
+  transform: Transform | undefined;
+  visited: boolean = false;
+
+  constructor(key: symbol, grid, base?: Board, transform?: Transform) {
     if (key !== PRIVATE_KEY) {
       throw new Error(
         "Use Board.get() to create a new board, or start with Board.getEmptyBoard()"
       );
     }
 
-    this.index = index++;
+    this.index = transform ? 0 : index++;
     this.grid = grid;
+
+    if (typeof base === "undefined") {
+      this.base = this;
+    } else {
+      this.base = base;
+    }
+
+    this.transform = transform;
+
+    boards.set(this.key, this);
   }
 
   static getEmptyBoard() {
@@ -57,17 +55,51 @@ export default class Board {
   }
 
   // singleton to manage identical boards, also updates the move if grid is permutated
-  static get(grid: Grid, move?: Move): Board {
-    let board: Board | undefined = boards.find((b) =>
-      b.compareGrid(grid, move)
-    );
+  static get(grid: Grid): Board {
+    // find the board with exactly the same grid
+    let board: Board | undefined = boards.get(Board.idFromGrid(grid));
 
     if (typeof board === "undefined") {
       board = new Board(PRIVATE_KEY, grid);
-      boards.push(board);
+
+      board.createAllVariations();
     }
 
     return board;
+  }
+
+  createAllVariations() {
+    // TODO generate all permutations of the grid and add them to the map
+    TRANSFORMS.forEach((transform) => {
+      const transformedGrid = transform.transformGrid(this.grid);
+
+      if (!boards.get(Board.idFromGrid(transformedGrid))) {
+        new Board(PRIVATE_KEY, transformedGrid, this, transform);
+      }
+    });
+  }
+
+  static idFromGrid(grid: Grid): string {
+    return grid
+      .flat()
+      .map((mark) => (mark ? mark : "."))
+      .join("");
+  }
+
+  get key(): string {
+    return Board.idFromGrid(this.grid);
+  }
+
+  get id(): string {
+    if (this.transform) {
+      return `${this.base?.id}-${this.transform.slug}`;
+    } else {
+      return this.index.toString();
+    }
+  }
+
+  get name(): string {
+    return `#${this.id}`;
   }
 
   move(move: Move): Board {
@@ -81,7 +113,7 @@ export default class Board {
 
     // if grid was originally differet, rotate the move accordingly
 
-    const board = Board.get(nextGrid, move);
+    const board = Board.get(nextGrid);
     return board;
   }
 
@@ -101,29 +133,14 @@ export default class Board {
 
     // compare moves' next boards and remove duplicates
     this.moves = this.moves.filter((move, i, arr) => {
-      return arr.findIndex((m) => m.next.compare(move.next)) === i;
+      return arr.findIndex((m) => m.next.base.compare(move.next.base)) === i;
     });
 
     this.moves.forEach((move) => move.recordIndex());
   }
 
-  compareGrid(grid: Grid, move?: Move): boolean {
-    // compare each permutaion of board1 with board2
-    let identical = perms.some((perm) => {
-      const transformedBoardGrid = perm.transformGrid(this.grid);
-      if (gridsAreIdentical(grid, transformedBoardGrid)) {
-        move?.transform(perm);
-        return true;
-      } else {
-        return false;
-      }
-    });
-
-    return identical;
-  }
-
   compare(board: Board): boolean {
-    return this.compareGrid(board.grid);
+    return this.key === board.key;
   }
 
   isFull(): boolean {
@@ -151,7 +168,7 @@ export default class Board {
   }
 
   html(move?: Move): string {
-    const idAttribute = move ? "" : `id="board${this.index}"`;
+    const idAttribute = move ? "" : `id="board${this.base.id}"`;
 
     let title = "";
 
@@ -160,9 +177,9 @@ export default class Board {
     }
 
     if (move && !this.isWinner() && !this.isFull()) {
-      title += `<span><a href="#board${this.index}">Board ${this.index}</a></span>`;
+      title += `<span><a href="#board${this.base.id}">${this.name}</a></span>`;
     } else {
-      title += `<span>Board ${this.index}</span>`;
+      title += `<span>${this.name}</span>`;
     }
 
     return `<section class="board" ${idAttribute}>
@@ -175,9 +192,7 @@ export default class Board {
 
   svg(currentMove?: Move): string {
     let backgroundColor =
-      (currentMove && currentMove.mark) === X
-        ? X_TURN_BACKGROUND
-        : O_TURN_BACKGROUND;
+      currentMove && currentMove.mark ? X_TURN_BACKGROUND : O_TURN_BACKGROUND;
 
     if (this.isWinner()) {
       backgroundColor = WINNING_BACKGROUND;
@@ -197,8 +212,8 @@ export default class Board {
 
               if (
                 currentMove &&
-                currentMove.prevRow === i &&
-                currentMove.prevCol === j
+                currentMove.nextCoordinates.row === i &&
+                currentMove.nextCoordinates.col === j
               ) {
                 color = "blue";
               }

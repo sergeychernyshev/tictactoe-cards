@@ -1,14 +1,14 @@
 import "./style.css";
 
-import Board from "./Board";
 import Turn from "./Turn";
 
 let turn: Turn | null = new Turn();
-let html = turn.html();
+let html = "";
 
-// while ((turn = turn.next())) {
-//   html += turn.html();
-// }
+while (turn) {
+  html += turn.html();
+  turn = turn.next();
+}
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>

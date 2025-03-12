@@ -3,7 +3,7 @@ import type { Grid } from "./Grid";
 import Board from "./Board";
 import Coordinates from "./Coordinates";
 import { Mark } from "./Mark";
-import { Transform } from "./Permutation";
+import { Transform } from "./Transform";
 
 let index = 1;
 
@@ -16,10 +16,6 @@ export default class Move {
   // indicates the row and column on previous board
   prevCoordinates: Coordinates;
   nextCoordinates: Coordinates;
-
-  // indicates the row and column on the next board (after deduplication)
-  nextRow: number;
-  nextCol: number;
 
   index: number;
 

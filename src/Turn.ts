@@ -28,7 +28,7 @@ export default class Turn {
     // determine the resulting boards to start next round from
     const nextBoards = nextMoves
       .map((move) => move.next)
-      .filter((b) => !b.isWinner());
+      .filter((b) => !b.transform && !b.isWinner());
 
     // different moves can produce same boards, don't count them twice
     this.dedupedNextBoards = nextBoards.filter(
@@ -49,10 +49,17 @@ export default class Turn {
     }
   }
 
+  get moves(): number {
+    return this.boards
+      .map((board) => board.moves.length)
+      .reduce((a, b) => a + b);
+  }
+
   html(): string {
     const moves = this.boards.map((board) => board.moves).flat();
 
-    let html = `<h2 id="turn${this.number}">Turn ${this.number}</h2>`;
+    let html = `<h2 id="turn${this.number}">Turn ${this.number}</h2>
+    <p>Board: ${this.moves}</p>`;
 
     html += this.boards
       .map(
